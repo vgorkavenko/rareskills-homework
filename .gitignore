@@ -1,3 +1,6 @@
+# Dependency directories
+node_modules/
+
 # Compiler files
 cache/
 out/
@@ -12,3 +15,6 @@ docs/
 
 # Dotenv file
 .env
+
+# Editor files
+.vscode/
