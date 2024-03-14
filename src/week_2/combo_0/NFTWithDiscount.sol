@@ -18,6 +18,7 @@ contract NFTWithDiscount is Ownable2Step, ERC721Royalty {
     error WrongPrice();
 
     event RoyaltiesClaimed(address indexed to, uint256 amount);
+    event MintedWithDiscount(address indexed to, uint256 tokenId);
 
     uint256 public constant MAX_SUPPLY = 1000;
     uint256 public constant COMMON_PRICE = 1 ether;
@@ -58,6 +59,7 @@ contract NFTWithDiscount is Ownable2Step, ERC721Royalty {
         if (!MerkleProof.verifyCalldata(proof, discountMerkleRoot, proofLeaf)) revert InvalidDiscountProof();
         _discountedAddresses.set(index);
         _mint(msg.sender);
+        emit MintedWithDiscount(msg.sender, totalSupply);
     }
 
     function claimRoyalties(address to, uint256 amount) external onlyOwner {
