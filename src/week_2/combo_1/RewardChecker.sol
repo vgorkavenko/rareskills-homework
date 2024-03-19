@@ -5,6 +5,8 @@ import { IERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensio
 
 contract RewardChecker {
 
+    error InvalidTokenId();
+
     IERC721Enumerable public nftCollectable;
 
     constructor(address _nftCollectable) {
@@ -24,11 +26,16 @@ contract RewardChecker {
         } while (i < ownersTokensCount);
     }
 
+    // | Function Name        | min    | avg   | median | max   | # calls |
+    // | isPrimeId            | 306    | 564   | 412    | 1047  | 101     |
     function isPrimeId(uint256 id) public pure returns (uint256) {
+        if (id == 0) {
+            revert InvalidTokenId();
+        }
         if (id == 1) {
             return 0;
         }
-        if (id == 2) {
+        if (id < 4) {
             return 1;
         }
         if (id % 2 == 0) {
@@ -38,7 +45,7 @@ contract RewardChecker {
             return 0;
         }
         uint256 i = 5;
-        while (id > i * i) {
+        while (i * i <= id) {
             if (id % i == 0) {
                 return 0;
             }

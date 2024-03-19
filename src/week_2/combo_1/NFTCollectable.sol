@@ -8,24 +8,16 @@ contract NFTCollectable is ERC721Enumerable {
     error CollectionSizeReached();
     error InvalidTokenId();
 
-    uint256 constant public COLLECTION_SIZE = 20;
-    uint256 constant public MAX_TOKEN_ID = 100;
-    uint256 constant public MIN_TOKEN_ID = 1;
+    uint256 public constant MAX_SUPPLY = 20;
 
 
     constructor() ERC721("NFTCollectable", "NFTC") {
     }
 
-    function mint(address to, uint256 tokenId) external {
-        if (tokenId > MAX_TOKEN_ID) {
-            revert InvalidTokenId();
-        }
-        if (tokenId < MIN_TOKEN_ID) {
-            revert InvalidTokenId();
-        }
-        if (COLLECTION_SIZE < totalSupply()) {
-            revert CollectionSizeReached();
-        }
-        _mint(to, tokenId);
+    function mint(address to) external {
+        uint256 _totalSupply = totalSupply();
+        if (MAX_SUPPLY == _totalSupply) revert CollectionSizeReached();
+        // start from 1
+        super._mint(to, ++_totalSupply);
     }
 }

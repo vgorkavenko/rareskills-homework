@@ -7,6 +7,7 @@ import { SimpleERC20 } from "./SimpleERC20.sol";
 import { NFTWithDiscount } from "./NFTWithDiscount.sol";
 
 contract StakingContract is IERC721Receiver {
+    error NotTimeToClaim();
     error NothingToClaim();
     error WrongNFT();
     error NotStaker();
@@ -54,6 +55,7 @@ contract StakingContract is IERC721Receiver {
 
     function claimRewards() external {
         if (stakedTokensCount[msg.sender] == 0) revert NotStaker();
+        if (block.timestamp - lastStakerClaimTimestamps[msg.sender] < REWARDS_PERIOD) revert NotTimeToClaim();
         uint256 rewards = getRewardsAmount();
         if (rewards == 0) revert NothingToClaim();
         _claimRewards(msg.sender, rewards);

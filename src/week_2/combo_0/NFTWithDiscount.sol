@@ -39,7 +39,6 @@ contract NFTWithDiscount is Ownable2Step, ERC721Royalty {
     ) Ownable(_owner) ERC721("NFTWithDiscount", "NFTWD") {
         // royalty for owner is 2.5%
         _setDefaultRoyalty(_owner, 250);
-        if (_discountMerkleRoot == 0) revert InvalidDiscountMerkleRoot();
         discountMerkleRoot = _discountMerkleRoot;
         if (_discountBasisPoints > BASIS_POINTS_DENOMINATOR) revert InvalidDiscountBasisPoints();
         discountBasisPoints = _discountBasisPoints;
@@ -55,8 +54,7 @@ contract NFTWithDiscount is Ownable2Step, ERC721Royalty {
         if (msg.value != priceWithDiscount) revert WrongPrice();
         // double hashing leaf to prevent second pre-image attack
         // the hashing algorithm follows "StandardMerkleTree" implementation from OpenZeppelin
-        bytes32 proofLeaf = keccak256(bytes.concat(keccak256(abi.encodePacked(msg.sender, index))));
-        if (!MerkleProof.verifyCalldata(proof, discountMerkleRoot, proofLeaf)) revert InvalidDiscountProof();
+        if (!_proofIsValid(proof, index)) revert InvalidDiscountProof();
         _discountedAddresses.set(index);
         _mint(msg.sender);
         emit MintedWithDiscount(msg.sender, totalSupply);
@@ -69,11 +67,17 @@ contract NFTWithDiscount is Ownable2Step, ERC721Royalty {
     }
 
     function _mint(address to) internal {
+        uint256 _totalSupply = totalSupply;
+        if (MAX_SUPPLY == _totalSupply) revert SoldOut();
+        super._mint(to, totalSupply);
         unchecked {
             // totalSupply can't be more than MAX_SUPPLY, so it's safe to add 1
-            totalSupply += 1;
+            totalSupply = _totalSupply + 1;
         }
-        if (MAX_SUPPLY < totalSupply) revert SoldOut();
-        super._mint(to, totalSupply);
+    }
+
+    function _proofIsValid(bytes32[] calldata proof, uint256 index) internal view virtual returns (bool) {
+        bytes32 proofLeaf = keccak256(bytes.concat(keccak256(abi.encodePacked(msg.sender, index))));
+        return MerkleProof.verifyCalldata(proof, discountMerkleRoot, proofLeaf);
     }
 }
