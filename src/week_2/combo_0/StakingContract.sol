@@ -22,7 +22,6 @@ contract StakingContract is IERC721Receiver {
     NFTWithDiscount private _stakedNFT;
     SimpleERC20 private _rewardToken;
 
-    // address[1000] public tokensStakers; ???
     mapping(uint256 tokenId => address) public tokensStakers;
     mapping(address => uint256) public stakedTokensCount;
     mapping(address => uint256) public lastStakerClaimTimestamps;
