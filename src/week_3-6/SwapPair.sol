@@ -27,7 +27,6 @@ contract SwapPair is ERC20 {
 
     string private constant lpName = "SwapPair";
     string private constant lpSymbol = "SWP";
-    uint256 private constant MINIMUM_LIQUIDITY = 10 ** 3;
     uint224 private constant CALC_PRECISION_ON_UPDATE = 2 ** 112;
 
     IERC20 public token0;
@@ -81,9 +80,7 @@ contract SwapPair is ERC20 {
             amount0In = amount0In * liquidity / _totalSupply;
             amount1In = amount1In * liquidity / _totalSupply;
         } else {
-            liquidity = (amount0In * amount1In).sqrt() - MINIMUM_LIQUIDITY;
-            // prevent the first minter from having all the liquidity
-           _mint(address(0), MINIMUM_LIQUIDITY);
+            liquidity = (amount0In * amount1In).sqrt();
         }
         if (liquidity == 0) revert InsufficientLiquidity();
 
