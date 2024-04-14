@@ -158,6 +158,7 @@ contract SwapPair is ERC20 {
         emit Swapped(msg.sender, amount0In, amount1In, amount0Out, amount1Out);
     }
 
+    // TODO: reentrancy protection
     function flashLoan(uint256 token0ToBorrow, uint256 token1ToBorrow, bytes calldata data) external {
         // read once to reduce gas
         uint256 _reserve0 = reserve0;
