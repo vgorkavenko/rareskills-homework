@@ -19,6 +19,7 @@ contract SwapPair is ERC20 {
 
     error InvalidK();
     error InvalidAmountToMintLP();
+    error InvalidAmountToBurnLP();
     error InvalidAmountToBorrow();
     error InvalidResponseFromBorrower();
     error InvalidReturnedAmount();
@@ -52,21 +53,7 @@ contract SwapPair is ERC20 {
         return lpSymbol;
     }
 
-    // @notice helper to calculate the min amount of token0 to receive
-    // @dev also accounts for the 0.3% fee
-    function getAmount0Out(uint256 amount1In) public view returns (uint256) {
-        uint256 _amount1In = amount1In - (amount1In * 3 / 1000);
-        return reserve0 * _amount1In / (reserve1 + _amount1In);
-    }
-
-    // @notice helper to calculate the min amount of token1 to receive
-    // @dev also accounts for the 0.3% fee
-    function getAmount1Out(uint256 amount0In) public view returns (uint256) {
-        uint256 _amount0In = amount0In - (amount0In * 3 / 1000);
-        return reserve1 * _amount0In / (reserve0 + _amount0In);
-    }
-
-    function mint(uint256 amount0In, uint256 amount1In) external returns (uint256 liquidity) {
+    function mint(uint256 amount0In, uint256 amount1In, uint256 minLiquidity) external returns (uint256 liquidity) {
         if (amount0In == 0 || amount1In == 0) revert InvalidAmountToMintLP();
 
         // read once to reduce gas
@@ -77,12 +64,13 @@ contract SwapPair is ERC20 {
         if (_totalSupply > 0) {
             liquidity = (amount0In * _totalSupply / _reserve0).min(amount1In * _totalSupply / _reserve1);
             // calculate optimal amounts to transfer
-            amount0In = amount0In * liquidity / _totalSupply;
-            amount1In = amount1In * liquidity / _totalSupply;
+            amount0In =  liquidity * reserve0 / _totalSupply;
+            amount1In =  liquidity * reserve1 / _totalSupply;
         } else {
             liquidity = (amount0In * amount1In).sqrt();
         }
         if (liquidity == 0) revert InsufficientLiquidity();
+        if (liquidity < minLiquidity) revert Slippage();
 
         token0.transferFrom(msg.sender, address(this), amount0In);
         token1.transferFrom(msg.sender, address(this), amount1In);
@@ -93,19 +81,20 @@ contract SwapPair is ERC20 {
         emit Mint(msg.sender, amount0In, amount1In);
     }
 
-    function burn() public {
+    function burn(uint256 liquidity, uint256 amount0OutMin, uint256 amount1OutMin) public {
         // read once to reduce gas
+        if (liquidity > balanceOf(msg.sender)) revert InvalidAmountToBurnLP();
         uint256 _reserve0 = reserve0;
         uint256 _reserve1 = reserve1;
         uint256 _totalSupply = totalSupply();
-        uint256 liquidity = balanceOf(msg.sender);
 
         uint256 amount0 = liquidity * _reserve0 / _totalSupply;
         uint256 amount1 = liquidity * _reserve1 / _totalSupply;
 
         if(amount0 == 0 || amount1 == 0) revert InsufficientLiquidity();
+        if(amount0 < amount0OutMin || amount1 < amount1OutMin) revert Slippage();
 
-        _burn(address(this), liquidity);
+        _burn(address(msg.sender), liquidity);
         token0.transfer(msg.sender, amount0);
         token1.transfer(msg.sender, amount1);
 
@@ -158,7 +147,6 @@ contract SwapPair is ERC20 {
         emit Swapped(msg.sender, amount0In, amount1In, amount0Out, amount1Out);
     }
 
-    // TODO: reentrancy protection
     function flashLoan(uint256 token0ToBorrow, uint256 token1ToBorrow, bytes calldata data) external {
         // read once to reduce gas
         uint256 _reserve0 = reserve0;
@@ -189,7 +177,7 @@ contract SwapPair is ERC20 {
                 revert InvalidResponseFromBorrower();
             }
             // force the borrower to return the tokens, but with the fee
-            token1.transferFrom(msg.sender, address(this), token1ToBorrow + fee0);
+            token1.transferFrom(msg.sender, address(this), token1ToBorrow + fee1);
         }
 
         _update(_reserve0, _reserve1, _reserve0 + fee0, _reserve1 + fee1);
